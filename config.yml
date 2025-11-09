@@ -1,0 +1,13 @@
+app:
+  name: "Agora"
+  version: "1.0.0"
+
+server:
+  read_timeout: 5s
+  write_timeout: 10s
+  idle_timeout: 120s
+
+# TODO: add logging to project
+logging:
+  level: "debug"
+  format: "json"
