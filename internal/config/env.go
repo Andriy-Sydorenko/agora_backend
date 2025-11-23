@@ -77,6 +77,7 @@ func parseInt(val string) (int, error) {
 	return strconv.Atoi(val)
 }
 
+//nolint:unused
 func parseBool(val string) (bool, error) {
 	return strconv.ParseBool(val)
 }

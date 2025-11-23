@@ -1,0 +1,60 @@
+version: "2"
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - govet               # official Go vet
+    - staticcheck         # advanced static analysis (includes gosimple)
+    - errcheck            # check unchecked errors
+    - ineffassign         # detect useless assignments
+    - unused              # unused variables, functions, constants (replaces deadcode, structcheck, varcheck)
+    - goconst             # find repeated constants
+    - misspell            # find common misspellings
+    - unconvert           # detect unnecessary type conversions
+    - revive              # style guide checks (configurable)
+    - gocyclo             # check cyclomatic complexity (set threshold)
+    - dupl                # detect code duplicates (set threshold)
+    - nakedret            # discourage naked returns in long functions
+    - whitespace          # check trailing spaces, empty lines, etc
+    - prealloc            # recommend preallocating slices
+    - bodyclose           # ensure http response bodies are closed
+    - dogsled             # check assignments on same line
+    - copyloopvar         # catch loop variable reference bugs (replaces exportloopref)
+
+linters-settings:
+  gocyclo:
+    min-complexity: 10     # functions with complexity >10 will raise issues
+  dupl:
+    threshold: 80          # 80 tokens duplicates threshold
+  revive:
+    ignore-generated-header: true
+    severity: warning
+    rules:
+      - name: var-naming
+        severity: error
+      - name: package-comments
+      - name: import-shadowing
+      - name: error-strings
+      - name: indent-error-flow
+      - name: export-name
+  errcheck:
+    # Exclude some common ignored errors (optional)
+    exclude:
+      - Close
+      - Write
+      - Printf
+      - Fprintf
+  misspell:
+    locale: US
+
+issues:
+  max-issues-per-linter: 0   # unlimited issues per linter
+  max-same-issues: 0         # unlimited repeats
+
+#output:
+#  format: colored-line-number # nice colored output
+#  print-issued-lines: true
+#  print-linter-name: true
+#  print-warnings: true

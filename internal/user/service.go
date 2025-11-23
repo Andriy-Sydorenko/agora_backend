@@ -53,3 +53,19 @@ func (s *Service) GetUserById(ctx context.Context, id uuid.UUID) (*User, error) 
 	}
 	return user, nil
 }
+
+func (s *Service) GetByEmail(ctx context.Context, email string) (*User, error) {
+	return s.repo.GetByEmail(ctx, email)
+}
+
+func (s *Service) GetByUsername(ctx context.Context, username string) (*User, error) {
+	return s.repo.GetByUsername(ctx, username)
+}
+
+func (s *Service) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+	return s.repo.ExistsByEmail(ctx, email)
+}
+
+func (s *Service) ExistsByUsername(ctx context.Context, username string) (bool, error) {
+	return s.repo.ExistsByUsername(ctx, username)
+}
