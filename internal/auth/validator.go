@@ -20,6 +20,7 @@ const (
 	ErrEmailInvalid          = "invalid email format"
 	ErrEmailNoWhitespaces    = "email cannot have leading or trailing whitespace"
 	ErrEmailTaken            = "email already registered"
+	ErrEmailDoesNotExist     = "user with given email doesn't exist"
 	ErrUsernameRequired      = "username is required"
 	ErrUsernameNoWhitespaces = "username cannot have leading or trailing whitespace"
 	ErrUsernameTooShort      = "username must be at least %d characters"
@@ -126,15 +127,23 @@ func (v *Validator) ValidatePasswordFormat(password string) error {
 	return nil
 }
 
-func (v *Validator) ValidateEmailAvailability(ctx context.Context, email string) error {
-	alreadyExists, _ := v.userService.ExistsByEmail(ctx, email)
-	if alreadyExists {
+func (v *Validator) ValidateEmailExists(ctx context.Context, email string) error {
+	emailExists, _ := v.userService.ExistsByEmail(ctx, email)
+	if emailExists {
 		return errors.New(ErrEmailTaken)
 	}
 	return nil
 }
 
-func (v *Validator) ValidateUsernameAvailability(ctx context.Context, username string) error {
+func (v *Validator) ValidateEmailNotTaken(ctx context.Context, email string) error {
+	alreadyExists, _ := v.userService.ExistsByEmail(ctx, email)
+	if !alreadyExists {
+		return errors.New(ErrEmailDoesNotExist)
+	}
+	return nil
+}
+
+func (v *Validator) ValidateUsernameExists(ctx context.Context, username string) error {
 	alreadyExists, _ := v.userService.ExistsByUsername(ctx, username)
 	if alreadyExists {
 		return errors.New(ErrUsernameTaken)
@@ -157,13 +166,30 @@ func (v *Validator) ValidateRegistrationInput(ctx context.Context, email, userna
 
 	// Business validation(expensive by DB hits, performed only if formatting validation succeeds)
 	if len(errs) == 0 {
-		if err := v.ValidateEmailAvailability(ctx, email); err != nil {
+		if err := v.ValidateEmailExists(ctx, email); err != nil {
 			errs = append(errs, NewValidationError("email", err.Error()))
 		}
-		if err := v.ValidateUsernameAvailability(ctx, username); err != nil {
+		if err := v.ValidateUsernameExists(ctx, username); err != nil {
 			errs = append(errs, NewValidationError("username", err.Error()))
 		}
 	}
 
+	return errs
+}
+
+func (v *Validator) ValidateLoginInput(ctx context.Context, email, password string) ValidationErrors {
+	var errs ValidationErrors
+	if err := v.ValidateEmailFormat(email); err != nil {
+		errs = append(errs, NewValidationError("email", err.Error()))
+	}
+	if err := v.ValidatePasswordFormat(password); err != nil {
+		errs = append(errs, NewValidationError("password", err.Error()))
+	}
+
+	if len(errs) == 0 {
+		if err := v.ValidateEmailNotTaken(ctx, email); err != nil {
+			errs = append(errs, NewValidationError("email", err.Error()))
+		}
+	}
 	return errs
 }

@@ -2,7 +2,9 @@ package auth
 
 import (
 	"context"
+	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/user"
+	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
 )
 
 type Service struct {
@@ -24,4 +26,17 @@ func (s *Service) Register(ctx context.Context, email, username, password string
 
 	_, err := s.userService.CreateUser(ctx, email, username, password)
 	return err
+}
+
+func (s *Service) Login(ctx context.Context, cfg config.JWTConfig, email, password string) (string, error) {
+	if errs := s.validator.ValidateLoginInput(ctx, email, password); len(errs) > 0 {
+		return "", errs
+	}
+	userObj, _ := s.userService.GetByEmail(ctx, email)
+	jwtToken, err := utils.GenerateJWT(cfg, userObj.ID.String())
+	if err != nil {
+		return "", err
+	}
+
+	return jwtToken, nil
 }

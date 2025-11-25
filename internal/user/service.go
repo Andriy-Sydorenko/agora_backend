@@ -2,16 +2,9 @@ package user
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
 	"github.com/google/uuid"
-	"gorm.io/gorm"
-)
-
-// TODO: create centralized error handler
-var (
-	ErrUserNotFound      = errors.New("user not found")
-	ErrUserAlreadyExists = errors.New("user with this username/email already exists")
 )
 
 type Service struct {
@@ -29,7 +22,7 @@ func NewService(repo *Repository) *Service {
 func (s *Service) CreateUser(ctx context.Context, email, username, password string) (*User, error) {
 	// Using individual field for better separation of concerns (HTTP vs business logic),
 	// and maximum reusability (if we'll need service for grpc, jobs, tests)
-	hashedPassword, err := hashPassword(password)
+	hashedPassword, err := utils.HashPassword(password)
 	if err != nil {
 		return nil, fmt.Errorf("password hashing failed: %w", err)
 	}
@@ -44,14 +37,7 @@ func (s *Service) CreateUser(ctx context.Context, email, username, password stri
 }
 
 func (s *Service) GetUserById(ctx context.Context, id uuid.UUID) (*User, error) {
-	user, err := s.repo.GetByID(ctx, id)
-	if err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, ErrUserNotFound
-		}
-		return nil, fmt.Errorf("finding user by ID: %w", err)
-	}
-	return user, nil
+	return s.repo.GetByID(ctx, id)
 }
 
 func (s *Service) GetByEmail(ctx context.Context, email string) (*User, error) {

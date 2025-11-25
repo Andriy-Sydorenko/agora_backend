@@ -1,16 +1,19 @@
 package user
 
 import (
+	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
 	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
 	service *Service
+	config  *config.Config
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(service *Service, cfg *config.Config) *Handler {
 	return &Handler{
 		service: service,
+		config:  cfg,
 	}
 }
 

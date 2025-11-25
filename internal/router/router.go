@@ -20,8 +20,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	authService := auth.NewService(userService)
 
 	// Presentation layer - Handlers
-	userHandler := user.NewHandler(userService)
-	authHandler := auth.NewHandler(authService)
+	userHandler := user.NewHandler(userService, cfg)
+	authHandler := auth.NewHandler(authService, cfg)
 
 	//Router setup
 	router := gin.Default()

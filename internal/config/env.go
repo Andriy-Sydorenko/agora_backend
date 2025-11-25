@@ -18,17 +18,22 @@ type DatabaseConfig struct {
 	DBPassword string
 }
 
+type ProjectConfig struct {
+	IsProduction bool
+}
+
 type JWTConfig struct {
-	Secret          string
-	AccessLifetime  time.Duration
-	RefreshLifetime time.Duration
+	Secret            string
+	AccessLifetime    time.Duration
+	RefreshLifetime   time.Duration
+	JwtTokenCookieKey string
 }
 
 type CorsConfig struct {
 	AllowedOrigins []string
 }
 
-func loadEnv() (*CorsConfig, *DatabaseConfig, *JWTConfig) {
+func loadEnv() (*CorsConfig, *DatabaseConfig, *JWTConfig, *ProjectConfig) {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalln("⚠️ No .env file found, falling back to OS envs. Details:", err.Error())
 	}
@@ -44,12 +49,16 @@ func loadEnv() (*CorsConfig, *DatabaseConfig, *JWTConfig) {
 		DBPassword: getEnv("DB_PASSWORD", "password", parseString),
 	}
 	jwtCfg := &JWTConfig{
-		Secret:          getEnv("JWT_SECRET_KEY", "supadupasecret", parseString),
-		AccessLifetime:  getEnv("JWT_ACCESS_TOKEN_LIFETIME_SECONDS", 15*time.Minute, parseDuration),
-		RefreshLifetime: getEnv("JWT_REFRESH_TOKEN_LIFETIME_SECONDS", 24*time.Hour, parseDuration),
+		Secret:            getEnv("JWT_SECRET_KEY", "supadupasecret", parseString),
+		AccessLifetime:    getEnv("JWT_ACCESS_TOKEN_LIFETIME_SECONDS", 15*time.Minute, parseDuration),
+		RefreshLifetime:   getEnv("JWT_REFRESH_TOKEN_LIFETIME_SECONDS", 24*time.Hour, parseDuration),
+		JwtTokenCookieKey: getEnv("JWT_TOKEN_COOKIE_KEY", "token", parseString),
+	}
+	projectCfg := &ProjectConfig{
+		IsProduction: getEnv("IS_PRODUCTION", false, parseBool),
 	}
 
-	return corsCfg, dbCfg, jwtCfg
+	return corsCfg, dbCfg, jwtCfg, projectCfg
 }
 
 type parseFunc[T any] func(string) (T, error)
