@@ -33,7 +33,7 @@ func (s *Service) Login(ctx context.Context, cfg config.JWTConfig, email, passwo
 		return "", errs
 	}
 	userObj, _ := s.userService.GetByEmail(ctx, email)
-	jwtToken, err := utils.GenerateJWT(cfg, userObj.ID.String())
+	jwtToken, err := utils.GenerateJWT(cfg.Secret, cfg.AccessLifetime, userObj.ID.String())
 	if err != nil {
 		return "", err
 	}

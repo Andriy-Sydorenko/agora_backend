@@ -73,6 +73,6 @@ func (h *Handler) Login(c *gin.Context) {
 	c.SetCookie(h.config.JWT.JwtTokenCookieKey, jwtToken, int(h.config.JWT.AccessLifetime.Seconds()), "/", "", h.config.Project.IsProduction, true)
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Registration successful",
+		"message": "Login successful",
 	})
 }

@@ -1,8 +1,13 @@
 package user
 
 import (
+	"errors"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
+	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+	"net/http"
 )
 
 type Handler struct {
@@ -18,16 +23,27 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 }
 
 func (h *Handler) GetRequestUser(c *gin.Context) {
-	// TODO: implement middleware and extract token/decode uuid from it
-	//_, err := h.service.GetUserById(c.Request.Context())
+	userIDString := c.GetString("user_id")
+	userID, err := uuid.Parse(userIDString)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": utils.ErrInvalidToken.Error(),
+		})
+		return
+	}
 
-	//if err != nil {
-	//	// TODO: add corresponding error handling
-	//	if errors.Is(err, ErrUserAlreadyExists) {
-	//		c.JSON(400, gin.H{"error": "User already exists!"})
-	//	}
-	//	log.Printf("Registration failed: %v", err)
-	//	c.JSON(500, gin.H{"error": "Registration failed"})
-	//	return
-	//}
+	user, err := h.service.GetUserById(c.Request.Context(), userID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": ErrUserNotFound.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, PublicUserResponse{
+		Email:    user.Email,
+		Username: user.Username,
+	})
 }
