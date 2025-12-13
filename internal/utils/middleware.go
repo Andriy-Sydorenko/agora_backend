@@ -42,6 +42,7 @@ func CORS(cfgCors *config.CorsConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if slices.Equal(cfgCors.AllowedOrigins, []string{"*"}) {
 			c.Next()
+			return
 		}
 		origin := c.GetHeader("Origin")
 		if origin == "" {

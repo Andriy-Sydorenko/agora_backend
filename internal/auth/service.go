@@ -2,9 +2,12 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/user"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 )
 
 type Service struct {
@@ -39,4 +42,21 @@ func (s *Service) Login(ctx context.Context, cfg config.JWTConfig, email, passwo
 	}
 
 	return jwtToken, nil
+}
+
+func (s *Service) GoogleURL(cfg *config.Config) (string, error) {
+	state, err := GenerateState(cfg.JWT.Secret)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate state token: %w", err)
+	}
+
+	oauthConfig := &oauth2.Config{
+		ClientID:     cfg.Google.ClientID,
+		ClientSecret: cfg.Google.ClientSecret,
+		RedirectURL:  cfg.Google.ClientRedirectURL,
+		Scopes:       []string{"openid", "email", "profile"},
+		Endpoint:     google.Endpoint,
+	}
+	authURL := oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOnline, oauth2.SetAuthURLParam("prompt", "select_account"))
+	return authURL, nil
 }

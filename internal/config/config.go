@@ -14,6 +14,7 @@ type Config struct {
 	Database DatabaseConfig
 	JWT      JWTConfig
 	Project  ProjectConfig
+	Google   GoogleConfig
 }
 type AppConfig struct {
 	Name    string `yaml:"name"`
@@ -35,7 +36,7 @@ type LoggingConfig struct {
 func Load(path string) *Config {
 	cfg := new(Config)
 
-	corsCfg, dbCfg, jwtCfg, projectCfg := loadEnv()
+	corsCfg, dbCfg, jwtCfg, projectCfg, googleCfg := loadEnv()
 
 	yamlFile, err := os.ReadFile(path)
 	if err != nil {
@@ -48,10 +49,11 @@ func Load(path string) *Config {
 		return nil
 	}
 
-	cfg.Server.Cors = *corsCfg
-	cfg.Database = *dbCfg
-	cfg.JWT = *jwtCfg
-	cfg.Project = *projectCfg
+	cfg.Server.Cors = corsCfg
+	cfg.Database = dbCfg
+	cfg.JWT = jwtCfg
+	cfg.Project = projectCfg
+	cfg.Google = googleCfg
 
 	return cfg
 }

@@ -10,4 +10,13 @@ func RegisterRoutes(router *gin.Engine, h *Handler) {
 		authRouter.POST("/register", h.Register)
 		authRouter.POST("/login", h.Login)
 	}
+
+	registerGoogleAuthRoutes(authRouter, h)
+}
+
+func registerGoogleAuthRoutes(baseRouter *gin.RouterGroup, h *Handler) {
+	googleAuthRouter := baseRouter.Group("/google")
+	{
+		googleAuthRouter.GET("/url", h.GoogleURL)
+	}
 }

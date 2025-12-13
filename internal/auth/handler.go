@@ -76,3 +76,17 @@ func (h *Handler) Login(c *gin.Context) {
 		"message": "Login successful",
 	})
 }
+
+func (h *Handler) GoogleURL(c *gin.Context) {
+	googleURL, err := h.service.GoogleURL(h.config)
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Problem generating google auth url",
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"url": googleURL,
+	})
+}

@@ -26,8 +26,10 @@ func (repo *Repository) Create(ctx context.Context, user *User) error {
 // GetByID retrieves user by ID
 func (repo *Repository) GetByID(ctx context.Context, id uuid.UUID) (*User, error) {
 	// TODO: why we're using query result assignment by pointer as destination, instead of user:=...?
-	var currentUser User                                          // INFO: using value in this case instead of pointer to prevent nil pointer dereferencing in orm method
-	err := repo.db.WithContext(ctx).First(&currentUser, id).Error // INFO: using only First() without Where() here because of the default search by primary key
+	var currentUser User // INFO: using value in this case instead of pointer to prevent nil pointer dereferencing in orm method
+	err := repo.db.WithContext(ctx).
+		Select("id", "username", "email", "created_at", "updated_at").
+		Take(&currentUser, id).Error
 	if err != nil {
 		return nil, err
 	}

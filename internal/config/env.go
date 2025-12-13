@@ -31,39 +31,61 @@ type JWTConfig struct {
 	JwtTokenCookieKey string
 }
 
+type GoogleConfig struct {
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUsername string
+	SMTPPassword string
+	SMTPUseTLS   bool
+
+	ClientID          string
+	ClientSecret      string
+	ClientRedirectURL string
+}
+
 type CorsConfig struct {
 	AllowedOrigins []string
 }
 
-func loadEnv() (*CorsConfig, *DatabaseConfig, *JWTConfig, *ProjectConfig) {
+func loadEnv() (CorsConfig, DatabaseConfig, JWTConfig, ProjectConfig, GoogleConfig) {
 	if _, ok := os.LookupEnv("IS_DOCKER"); !ok {
 		if err := godotenv.Load(); err != nil {
 			log.Fatalln("⚠️ No .env file found, falling back to OS envs. Details:", err.Error())
 		}
 	}
 
-	corsCfg := &CorsConfig{
+	corsCfg := CorsConfig{
 		AllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", []string{"*"}, parseStringSlice),
 	}
-	dbCfg := &DatabaseConfig{
+	dbCfg := DatabaseConfig{
 		DBHost:     getEnv("POSTGRES_HOST", "localhost", parseString),
 		DBPort:     getEnv("POSTGRES_PORT", 5432, parseInt),
 		DBUser:     getEnv("POSTGRES_USER", "postgres", parseString),
 		DBName:     getEnv("POSTGRES_DB", "agora_db", parseString),
 		DBPassword: getEnv("POSTGRES_PASSWORD", "password", parseString),
 	}
-	jwtCfg := &JWTConfig{
+	jwtCfg := JWTConfig{
 		Secret:            getEnv("JWT_SECRET_KEY", "supadupasecret", parseString),
 		AccessLifetime:    getEnv("JWT_ACCESS_TOKEN_LIFETIME_SECONDS", 15*time.Minute, parseDuration),
 		RefreshLifetime:   getEnv("JWT_REFRESH_TOKEN_LIFETIME_SECONDS", 24*time.Hour, parseDuration),
 		JwtTokenCookieKey: getEnv("JWT_TOKEN_COOKIE_KEY", "token", parseString),
 	}
-	projectCfg := &ProjectConfig{
+	projectCfg := ProjectConfig{
 		IsProduction: getEnv("IS_PRODUCTION", false, parseBool),
 		AppPort:      getEnv("APP_PORT", 8080, parseInt),
 	}
+	googleCfg := GoogleConfig{
+		SMTPHost:          getEnv("GOOGLE_SMTP_HOST", "smtp.gmail.com", parseString),
+		SMTPPort:          getEnv("GOOGLE_SMTP_PORT", 587, parseInt),
+		SMTPUsername:      getEnv("GOOGLE_SMTP_USERNAME", "email@gmail.com", parseString),
+		SMTPPassword:      getEnv("GOOGLE_SMTP_PASSWORD", "somepassword", parseString),
+		SMTPUseTLS:        getEnv("GOOGLE_SMTP_USE_TLS", true, parseBool),
+		ClientID:          getEnv("GOOGLE_CLIENT_ID", "google_client_id", parseString),
+		ClientSecret:      getEnv("GOOGLE_CLIENT_SECRET", "supadupasecret", parseString),
+		ClientRedirectURL: getEnv("GOOGLE_REDIRECT_URL", "someurl.com", parseString),
+	}
 
-	return corsCfg, dbCfg, jwtCfg, projectCfg
+	return corsCfg, dbCfg, jwtCfg, projectCfg, googleCfg
 }
 
 type parseFunc[T any] func(string) (T, error)
