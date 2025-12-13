@@ -1,15 +1,17 @@
 package utils
 
 import (
+	"net/http"
+	"slices"
+	"strings"
+
 	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
 	"github.com/gin-gonic/gin"
-	"net/http"
-	"strings"
 )
 
-func JWTAuthMiddleware(cfg *config.Config) gin.HandlerFunc {
+func JWTAuthMiddleware(cfgJWT *config.JWTConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString, err := c.Cookie(cfg.JWT.JwtTokenCookieKey)
+		tokenString, err := c.Cookie(cfgJWT.JwtTokenCookieKey)
 		if err != nil {
 			authHeader := c.GetHeader("Authorization")
 			if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
@@ -20,13 +22,48 @@ func JWTAuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 				return
 			}
 		}
-		userID, err := DecryptJWT(tokenString, cfg.JWT.Secret)
+		userID, err := DecryptJWT(tokenString, cfgJWT.Secret)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			c.Abort()
 			return
 		}
 		c.Set("user_id", userID)
+		c.Next()
+	}
+}
+
+func CORS(cfgCors *config.CorsConfig) gin.HandlerFunc {
+	allowedOriginsSet := make(map[string]struct{}, len(cfgCors.AllowedOrigins))
+	for _, origin := range cfgCors.AllowedOrigins {
+		allowedOriginsSet[origin] = struct{}{}
+	}
+
+	return func(c *gin.Context) {
+		if slices.Equal(cfgCors.AllowedOrigins, []string{"*"}) {
+			c.Next()
+		}
+		origin := c.GetHeader("Origin")
+		if origin == "" {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+		if _, ok := allowedOriginsSet[origin]; !ok {
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+
+		c.Header("Access-Control-Allow-Origin", origin)                               // Permits the requesting origin
+		c.Header("Vary", "Origin")                                                    // Tells caches response varies by Origin header
+		c.Header("Access-Control-Allow-Credentials", "true")                          // Allows cookies/auth headers in cross-origin requests
+		c.Header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS") // HTTP methods allowed in cross-origin requests
+		c.Header("Access-Control-Allow-Headers", "Authorization,Content-Type")        // Request headers allowed in cross-origin requests
+
+		if strings.EqualFold(c.Request.Method, http.MethodOptions) {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
 		c.Next()
 	}
 }

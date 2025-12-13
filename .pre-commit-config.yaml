@@ -7,3 +7,5 @@ repos:
         language: system
         types: [go]
         pass_filenames: false
+        args:
+          - --config=.golangci.yml

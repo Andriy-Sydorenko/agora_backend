@@ -2,12 +2,13 @@ package database
 
 import (
 	"fmt"
+	"log"
+	"net/url"
+
 	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"log"
-	"net/url"
 )
 
 func buildDBDSN(cfg *config.DatabaseConfig) string {

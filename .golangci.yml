@@ -1,4 +1,5 @@
 version: "2"
+
 run:
   timeout: 5m
   tests: true
@@ -13,7 +14,7 @@ linters:
     - goconst             # find repeated constants
     - misspell            # find common misspellings
     - unconvert           # detect unnecessary type conversions
-    - revive              # style guide checks (configurable)
+#    - revive              # style guide checks (configurable)
     - gocyclo             # check cyclomatic complexity (set threshold)
     - dupl                # detect code duplicates (set threshold)
     - nakedret            # discourage naked returns in long functions
@@ -25,9 +26,9 @@ linters:
 
 linters-settings:
   gocyclo:
-    min-complexity: 10     # functions with complexity >10 will raise issues
+    min-complexity: 10
   dupl:
-    threshold: 80          # 80 tokens duplicates threshold
+    threshold: 80
   revive:
     ignore-generated-header: true
     severity: warning
@@ -39,22 +40,9 @@ linters-settings:
       - name: error-strings
       - name: indent-error-flow
       - name: export-name
-  errcheck:
-    # Exclude some common ignored errors (optional)
-    exclude:
-      - Close
-      - Write
-      - Printf
-      - Fprintf
   misspell:
     locale: US
 
 issues:
-  max-issues-per-linter: 0   # unlimited issues per linter
-  max-same-issues: 0         # unlimited repeats
-
-#output:
-#  format: colored-line-number # nice colored output
-#  print-issued-lines: true
-#  print-linter-name: true
-#  print-warnings: true
+  max-issues-per-linter: 0
+  max-same-issues: 0

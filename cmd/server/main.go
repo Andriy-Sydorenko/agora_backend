@@ -1,10 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"log"
+
 	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/router"
 	"github.com/gin-gonic/gin"
-	"log"
 )
 
 func main() {
@@ -12,13 +14,13 @@ func main() {
 
 	mainRouter := router.SetupRouter(cfg)
 
-	mainRouter.GET("/", func(c *gin.Context) {
+	mainRouter.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "OK",
 		})
 	})
 
-	if err := mainRouter.Run(); err != nil {
+	if err := mainRouter.Run(fmt.Sprintf(":%d", cfg.Project.AppPort)); err != nil {
 		log.Fatalln("Server failed to start:", err)
 	}
 }

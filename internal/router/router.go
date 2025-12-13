@@ -5,6 +5,7 @@ import (
 	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/database"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/user"
+	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -25,7 +26,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 
 	//Router setup
 	router := gin.Default()
-	router.SetTrustedProxies(cfg.Server.Cors.AllowedOrigins)
+	router.Use(utils.CORS(&cfg.Server.Cors))
 
 	// Register domain routes
 	user.RegisterRoutes(router, userHandler)

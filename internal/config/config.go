@@ -1,7 +1,6 @@
 package config
 
 import (
-	_ "github.com/joho/godotenv/autoload"
 	"gopkg.in/yaml.v3"
 	"log"
 	"os"

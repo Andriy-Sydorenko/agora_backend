@@ -2,12 +2,13 @@ package config
 
 import (
 	"errors"
-	"github.com/joho/godotenv"
 	"log"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/joho/godotenv"
 )
 
 type DatabaseConfig struct {
@@ -20,6 +21,7 @@ type DatabaseConfig struct {
 
 type ProjectConfig struct {
 	IsProduction bool
+	AppPort      int
 }
 
 type JWTConfig struct {
@@ -34,19 +36,21 @@ type CorsConfig struct {
 }
 
 func loadEnv() (*CorsConfig, *DatabaseConfig, *JWTConfig, *ProjectConfig) {
-	if err := godotenv.Load(); err != nil {
-		log.Fatalln("⚠️ No .env file found, falling back to OS envs. Details:", err.Error())
+	if _, ok := os.LookupEnv("IS_DOCKER"); !ok {
+		if err := godotenv.Load(); err != nil {
+			log.Fatalln("⚠️ No .env file found, falling back to OS envs. Details:", err.Error())
+		}
 	}
 
 	corsCfg := &CorsConfig{
 		AllowedOrigins: getEnv("CORS_ALLOWED_ORIGINS", []string{"*"}, parseStringSlice),
 	}
 	dbCfg := &DatabaseConfig{
-		DBHost:     getEnv("DB_HOST", "localhost", parseString),
-		DBPort:     getEnv("DB_PORT", 5432, parseInt),
-		DBUser:     getEnv("DB_USER", "postgres", parseString),
-		DBName:     getEnv("DB_NAME", "agora_db", parseString),
-		DBPassword: getEnv("DB_PASSWORD", "password", parseString),
+		DBHost:     getEnv("POSTGRES_HOST", "localhost", parseString),
+		DBPort:     getEnv("POSTGRES_PORT", 5432, parseInt),
+		DBUser:     getEnv("POSTGRES_USER", "postgres", parseString),
+		DBName:     getEnv("POSTGRES_DB", "agora_db", parseString),
+		DBPassword: getEnv("POSTGRES_PASSWORD", "password", parseString),
 	}
 	jwtCfg := &JWTConfig{
 		Secret:            getEnv("JWT_SECRET_KEY", "supadupasecret", parseString),
@@ -56,6 +60,7 @@ func loadEnv() (*CorsConfig, *DatabaseConfig, *JWTConfig, *ProjectConfig) {
 	}
 	projectCfg := &ProjectConfig{
 		IsProduction: getEnv("IS_PRODUCTION", false, parseBool),
+		AppPort:      getEnv("APP_PORT", 8080, parseInt),
 	}
 
 	return corsCfg, dbCfg, jwtCfg, projectCfg

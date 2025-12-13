@@ -8,6 +8,6 @@ import (
 func RegisterRoutes(router *gin.Engine, h *Handler) {
 	userRouter := router.Group("/me")
 	{
-		userRouter.GET("", utils.JWTAuthMiddleware(h.config), h.GetRequestUser)
+		userRouter.GET("", utils.JWTAuthMiddleware(&h.config.JWT), h.GetRequestUser)
 	}
 }
