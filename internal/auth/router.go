@@ -18,5 +18,6 @@ func registerGoogleAuthRoutes(baseRouter *gin.RouterGroup, h *Handler) {
 	googleAuthRouter := baseRouter.Group("/google")
 	{
 		googleAuthRouter.GET("/url", h.GoogleURL)
+		googleAuthRouter.GET("/callback", h.HandleGoogleCallback)
 	}
 }

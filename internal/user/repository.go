@@ -23,6 +23,10 @@ func (repo *Repository) Create(ctx context.Context, user *User) error {
 	return repo.db.WithContext(ctx).Create(user).Error
 }
 
+func (repo *Repository) Update(ctx context.Context, user *User) error {
+	return repo.db.WithContext(ctx).Save(user).Error
+}
+
 // GetByID retrieves user by ID
 func (repo *Repository) GetByID(ctx context.Context, id uuid.UUID) (*User, error) {
 	// TODO: why we're using query result assignment by pointer as destination, instead of user:=...?
@@ -40,6 +44,16 @@ func (repo *Repository) GetByID(ctx context.Context, id uuid.UUID) (*User, error
 func (repo *Repository) GetByEmail(ctx context.Context, email string) (*User, error) {
 	var currentUser User
 	err := repo.db.WithContext(ctx).Where("email = ?", email).First(&currentUser).Error // INFO: using Where() instead of plain First() for better method chaining and readability
+	if err != nil {
+		return nil, err
+	}
+	return &currentUser, nil
+}
+
+// GetByGoogleID retrieves user by Google ID
+func (repo *Repository) GetByGoogleID(ctx context.Context, googleID string) (*User, error) {
+	var currentUser User
+	err := repo.db.WithContext(ctx).Where("google_id = ?", googleID).Take(&currentUser).Error
 	if err != nil {
 		return nil, err
 	}

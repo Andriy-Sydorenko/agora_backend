@@ -24,10 +24,10 @@ func GenerateState(jwtSecret string) (string, error) {
 	return state, nil
 }
 
-func ValidateState(state, jwtSecret string) (bool, error) {
+func ValidateState(state, jwtSecret string) error {
 	parts := strings.SplitN(state, ".", 2)
 	if len(parts) != 2 {
-		return false, fmt.Errorf("invalid state format")
+		return fmt.Errorf("invalid state format")
 	}
 
 	randomB64, signatureB64 := parts[0], parts[1]
@@ -37,8 +37,8 @@ func ValidateState(state, jwtSecret string) (bool, error) {
 	expectedSignature := base64.URLEncoding.EncodeToString(mac.Sum(nil))
 
 	if !hmac.Equal([]byte(signatureB64), []byte(expectedSignature)) {
-		return false, fmt.Errorf("invalid state signature")
+		return fmt.Errorf("invalid state signature")
 	}
 
-	return true, nil
+	return nil
 }

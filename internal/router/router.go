@@ -18,7 +18,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 
 	// Domain layer - Services
 	userService := user.NewService(userRepo)
-	authService := auth.NewService(userService)
+	authService := auth.NewService(userService, cfg.Google)
 
 	// Presentation layer - Handlers
 	userHandler := user.NewHandler(userService, cfg)

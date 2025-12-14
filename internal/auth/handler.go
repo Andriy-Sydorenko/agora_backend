@@ -66,6 +66,18 @@ func (h *Handler) Login(c *gin.Context) {
 			return
 		}
 
+		if errors.Is(err, ErrInvalidCredentials) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+			return
+		}
+
+		if errors.Is(err, ErrOAuthAccountNoPassword) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "This account uses Google Sign-In. Please login with Google.",
+			})
+			return
+		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Login failed"})
 		return
 	}
@@ -78,15 +90,35 @@ func (h *Handler) Login(c *gin.Context) {
 }
 
 func (h *Handler) GoogleURL(c *gin.Context) {
-	googleURL, err := h.service.GoogleURL(h.config)
+	googleURL, err := h.service.CreateGoogleURL(h.config)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Problem generating google auth url",
 		})
+		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"url": googleURL,
 	})
+}
+
+func (h *Handler) HandleGoogleCallback(c *gin.Context) {
+	googleAuthCode := c.Query("code")
+	googleAuthState := c.Query("state")
+	if googleAuthCode == "" || googleAuthState == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing code or state"})
+		return
+	}
+
+	jwtToken, err := h.service.HandleGoogleCallback(c.Request.Context(), &h.config.JWT, googleAuthCode, googleAuthState)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "OAuth authentication failed",
+		})
+	}
+
+	c.SetCookie(h.config.JWT.JwtTokenCookieKey, jwtToken, int(h.config.JWT.AccessLifetime.Seconds()), "/", "", h.config.Project.IsProduction, true)
+	c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000")
 }

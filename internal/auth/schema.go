@@ -12,3 +12,10 @@ type BasicLoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
+
+type GoogleUserInfo struct {
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	VerifiedEmail bool   `json:"verified_email"`
+	AvatarURL     string `json:"picture"`
+}
