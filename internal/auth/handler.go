@@ -104,6 +104,13 @@ func (h *Handler) GoogleURL(c *gin.Context) {
 	})
 }
 
+func (h *Handler) Logout(c *gin.Context) {
+	c.SetCookie(h.config.JWT.JwtTokenCookieKey, "", -1, "/", "", h.config.Project.IsProduction, true)
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Logout successful",
+	})
+}
+
 func (h *Handler) HandleGoogleCallback(c *gin.Context) {
 	googleAuthCode := c.Query("code")
 	googleAuthState := c.Query("state")

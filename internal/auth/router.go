@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -9,6 +10,7 @@ func RegisterRoutes(router *gin.Engine, h *Handler) {
 	{
 		authRouter.POST("/register", h.Register)
 		authRouter.POST("/login", h.Login)
+		authRouter.POST("/logout", utils.JWTAuthMiddleware(&h.config.JWT), h.Logout)
 	}
 
 	registerGoogleAuthRoutes(authRouter, h)
