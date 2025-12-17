@@ -19,6 +19,13 @@ type DatabaseConfig struct {
 	DBPassword string
 }
 
+type RedisConfig struct {
+	Host     string
+	Port     int
+	Password string
+	DB       int
+}
+
 type ProjectConfig struct {
 	IsProduction bool
 	AppPort      int
@@ -47,7 +54,7 @@ type CorsConfig struct {
 	AllowedOrigins []string
 }
 
-func loadEnv() (CorsConfig, DatabaseConfig, JWTConfig, ProjectConfig, GoogleConfig) {
+func loadEnv() (CorsConfig, DatabaseConfig, RedisConfig, JWTConfig, ProjectConfig, GoogleConfig) {
 	if _, ok := os.LookupEnv("IS_DOCKER"); !ok {
 		if err := godotenv.Load(); err != nil {
 			log.Fatalln("⚠️ No .env file found, falling back to OS envs. Details:", err.Error())
@@ -63,6 +70,12 @@ func loadEnv() (CorsConfig, DatabaseConfig, JWTConfig, ProjectConfig, GoogleConf
 		DBUser:     getEnv("POSTGRES_USER", "postgres", parseString),
 		DBName:     getEnv("POSTGRES_DB", "agora_db", parseString),
 		DBPassword: getEnv("POSTGRES_PASSWORD", "password", parseString),
+	}
+	redisCfg := RedisConfig{
+		Host:     getEnv("REDIS_HOST", "localhost", parseString),
+		Port:     getEnv("REDIS_PORT", 6379, parseInt),
+		Password: getEnv("REDIS_PASSWORD", "", parseString),
+		DB:       getEnv("REDIS_DB_NUM", 0, parseInt),
 	}
 	jwtCfg := JWTConfig{
 		Secret:            getEnv("JWT_SECRET_KEY", "supadupasecret", parseString),
@@ -85,7 +98,7 @@ func loadEnv() (CorsConfig, DatabaseConfig, JWTConfig, ProjectConfig, GoogleConf
 		ClientRedirectURL: getEnv("GOOGLE_REDIRECT_URL", "someurl.com", parseString),
 	}
 
-	return corsCfg, dbCfg, jwtCfg, projectCfg, googleCfg
+	return corsCfg, dbCfg, redisCfg, jwtCfg, projectCfg, googleCfg
 }
 
 type parseFunc[T any] func(string) (T, error)

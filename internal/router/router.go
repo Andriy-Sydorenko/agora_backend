@@ -12,13 +12,15 @@ import (
 func SetupRouter(cfg *config.Config) *gin.Engine {
 	// Infrastructure layer - Database
 	db := database.Connect(&cfg.Database)
+	// Infrastructure layer - Redis (singleton)
+	redisClient := database.ConnectRedisClient(&cfg.Redis)
 
 	// Data layer - Repositories
 	userRepo := user.NewRepository(db)
 
 	// Domain layer - Services
 	userService := user.NewService(userRepo)
-	authService := auth.NewService(userService, cfg.Google)
+	authService := auth.NewService(userService, cfg.Google, redisClient)
 
 	// Presentation layer - Handlers
 	userHandler := user.NewHandler(userService, cfg)

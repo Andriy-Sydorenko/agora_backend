@@ -8,6 +8,7 @@ import (
 	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/user"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"net/http"
@@ -17,6 +18,7 @@ type Service struct {
 	userService *user.Service
 	validator   *Validator
 	oauthConfig *oauth2.Config
+	redis       *redis.Client
 }
 
 var (
@@ -24,7 +26,7 @@ var (
 	ErrOAuthAccountNoPassword = errors.New("account uses OAuth, no password set")
 )
 
-func NewService(userService *user.Service, googleCfg config.GoogleConfig) *Service {
+func NewService(userService *user.Service, googleCfg config.GoogleConfig, redisClient *redis.Client) *Service {
 	oauthConfig := &oauth2.Config{
 		ClientID:     googleCfg.ClientID,
 		ClientSecret: googleCfg.ClientSecret,
@@ -37,6 +39,7 @@ func NewService(userService *user.Service, googleCfg config.GoogleConfig) *Servi
 		userService: userService,
 		validator:   NewValidator(userService),
 		oauthConfig: oauthConfig,
+		redis:       redisClient,
 	}
 }
 
