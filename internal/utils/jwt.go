@@ -8,29 +8,48 @@ import (
 )
 
 var (
-	ErrInvalidToken  = errors.New("invalid JWT token")
-	ErrExpiredToken  = errors.New("JWT token has expired")
-	ErrInvalidClaims = errors.New("invalid JWT claims")
+	ErrInvalidAccessToken  = errors.New("invalid access token")
+	ErrInvalidRefreshToken = errors.New("invalid refresh token")
+	ErrInvalidToken        = errors.New("invalid JWT token")
+	ErrExpiredToken        = errors.New("JWT token has expired")
+	ErrInvalidClaims       = errors.New("invalid JWT claims")
+	ErrInvalidTokenType    = errors.New("invalid token type")
 )
 
-func GenerateJWT(jwtSecret string, accessTokenLifetime time.Duration, userID string) (string, error) {
+const (
+	TokenTypeAccess             = "access"
+	TokenTypeRefresh            = "refresh"
+	RefreshTokenBlacklistPrefix = "refresh_token_blacklist:"
+)
+
+type TokenPair struct {
+	AccessToken  string
+	RefreshToken string
+}
+
+func GenerateJWT(jwtSecret string, tokenType string, tokenLifetime time.Duration, userID string) (string, error) {
+	if tokenType != TokenTypeAccess && tokenType != TokenTypeRefresh {
+		return "", ErrInvalidTokenType
+	}
+
+	tokenExpiry := time.Now().Add(tokenLifetime)
+
 	// TODO: Using default algorithm, can be changed later
-	jwtSecretSlice := []byte(jwtSecret)
-	tokenExpiry := time.Now().Add(accessTokenLifetime)
 	tokenObj := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": userID,
-		"exp": tokenExpiry.Unix(),
+		"sub":  userID,
+		"exp":  tokenExpiry.Unix(),
+		"type": tokenType,
 	})
-	token, err := tokenObj.SignedString(jwtSecretSlice)
+	token, err := tokenObj.SignedString([]byte(jwtSecret))
 	if err != nil {
 		return "", errors.New(fmt.Sprintln("failed to generate JWT token:", err))
 	}
 	return token, nil
 }
 
-func DecryptJWT(tokenString string, jwtSecret string) (string, error) {
+func DecryptJWT(tokenString string, jwtSecret string, expectedTokenType string) (string, jwt.MapClaims, error) {
 	if tokenString == "" {
-		return "", ErrInvalidToken
+		return "", nil, ErrInvalidToken
 	}
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
@@ -42,22 +61,27 @@ func DecryptJWT(tokenString string, jwtSecret string) (string, error) {
 
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
-			return "", ErrExpiredToken
+			return "", nil, ErrExpiredToken
 		}
-		return "", ErrInvalidToken
+		return "", nil, ErrInvalidToken
 	}
 
 	if !token.Valid {
-		return "", ErrInvalidToken
+		return "", nil, ErrInvalidToken
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return "", ErrInvalidClaims
+		return "", nil, ErrInvalidClaims
 	}
+
+	if tokenType, ok := claims["type"]; !ok || tokenType != expectedTokenType {
+		return "", nil, ErrInvalidTokenType
+	}
+
 	userID, ok := claims["sub"].(string)
 	if !ok || userID == "" {
-		return "", ErrInvalidClaims
+		return "", nil, ErrInvalidClaims
 	}
-	return userID, nil
+	return userID, claims, nil
 }

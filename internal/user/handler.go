@@ -27,7 +27,7 @@ func (h *Handler) GetRequestUser(c *gin.Context) {
 	userID, err := uuid.Parse(userIDString)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": utils.ErrInvalidToken.Error(),
+			"error": utils.ErrInvalidAccessToken.Error(),
 		})
 		return
 	}

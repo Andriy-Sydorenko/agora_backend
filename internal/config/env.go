@@ -32,10 +32,11 @@ type ProjectConfig struct {
 }
 
 type JWTConfig struct {
-	Secret            string
-	AccessLifetime    time.Duration
-	RefreshLifetime   time.Duration
-	JwtTokenCookieKey string
+	Secret                string
+	AccessLifetime        time.Duration
+	RefreshLifetime       time.Duration
+	AccessTokenCookieKey  string
+	RefreshTokenCookieKey string
 }
 
 type GoogleConfig struct {
@@ -78,10 +79,11 @@ func loadEnv() (CorsConfig, DatabaseConfig, RedisConfig, JWTConfig, ProjectConfi
 		DB:       getEnv("REDIS_DB_NUM", 0, parseInt),
 	}
 	jwtCfg := JWTConfig{
-		Secret:            getEnv("JWT_SECRET_KEY", "supadupasecret", parseString),
-		AccessLifetime:    getEnv("JWT_ACCESS_TOKEN_LIFETIME_SECONDS", 15*time.Minute, parseDuration),
-		RefreshLifetime:   getEnv("JWT_REFRESH_TOKEN_LIFETIME_SECONDS", 24*time.Hour, parseDuration),
-		JwtTokenCookieKey: getEnv("JWT_TOKEN_COOKIE_KEY", "token", parseString),
+		Secret:                getEnv("JWT_SECRET_KEY", "supadupasecret", parseString),
+		AccessLifetime:        getEnv("JWT_ACCESS_TOKEN_LIFETIME_SECONDS", 15*time.Minute, parseDuration),
+		RefreshLifetime:       getEnv("JWT_REFRESH_TOKEN_LIFETIME_SECONDS", 24*time.Hour, parseDuration),
+		AccessTokenCookieKey:  getEnv("JWT_ACCESS_TOKEN_COOKIE_KEY", "access", parseString),
+		RefreshTokenCookieKey: getEnv("JWT_REFRESH_TOKEN_COOKIE_KEY", "refresh", parseString),
 	}
 	projectCfg := ProjectConfig{
 		IsProduction: getEnv("IS_PRODUCTION", false, parseBool),

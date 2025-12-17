@@ -8,10 +8,12 @@ import (
 	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/user"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	"net/http"
+	"time"
 )
 
 type Service struct {
@@ -52,29 +54,24 @@ func (s *Service) Register(ctx context.Context, email, username, password string
 	return err
 }
 
-func (s *Service) Login(ctx context.Context, cfg config.JWTConfig, email, password string) (string, error) {
+func (s *Service) Login(ctx context.Context, cfg config.JWTConfig, email, password string) (*utils.TokenPair, error) {
 	if errs := s.validator.ValidateLoginInput(ctx, email, password); len(errs) > 0 {
-		return "", errs
+		return nil, errs
 	}
 	userObj, err := s.userService.GetByEmail(ctx, email)
 	if err != nil {
-		return "", ErrInvalidCredentials
+		return nil, ErrInvalidCredentials
 	}
 
 	if userObj.Password == nil {
-		return "", ErrOAuthAccountNoPassword
+		return nil, ErrOAuthAccountNoPassword
 	}
 
 	if !utils.VerifyPassword(password, *userObj.Password) {
-		return "", ErrInvalidCredentials
+		return nil, ErrInvalidCredentials
 	}
 
-	jwtToken, err := utils.GenerateJWT(cfg.Secret, cfg.AccessLifetime, userObj.ID.String())
-	if err != nil {
-		return "", err
-	}
-
-	return jwtToken, nil
+	return s.generateTokenPair(&cfg, userObj.ID.String())
 }
 
 func (s *Service) CreateGoogleURL(cfg *config.Config) (string, error) {
@@ -86,27 +83,27 @@ func (s *Service) CreateGoogleURL(cfg *config.Config) (string, error) {
 	return authURL, nil
 }
 
-func (s *Service) HandleGoogleCallback(ctx context.Context, jwtCfg *config.JWTConfig, code, state string) (string, error) {
+func (s *Service) HandleGoogleCallback(ctx context.Context, jwtCfg *config.JWTConfig, code, state string) (*utils.TokenPair, error) {
 	if err := ValidateState(state, jwtCfg.Secret); err != nil {
-		return "", fmt.Errorf("invalid state: %w", err)
+		return nil, fmt.Errorf("invalid state: %w", err)
 	}
 
 	token, err := s.oauthConfig.Exchange(ctx, code)
 	if err != nil {
-		return "", fmt.Errorf("code exchange failed: %w", err)
+		return nil, fmt.Errorf("code exchange failed: %w", err)
 	}
 
 	userInfo, err := s.fetchGoogleUserInfo(ctx, token.AccessToken)
 	if err != nil {
-		return "", fmt.Errorf("failed to fetch user info: %w", err)
+		return nil, fmt.Errorf("failed to fetch user info: %w", err)
 	}
 
 	userObj, err := s.userService.FindOrCreateByGoogle(ctx, userInfo.Email, userInfo.ID, userInfo.AvatarURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to create user: %w", err)
+		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	return utils.GenerateJWT(jwtCfg.Secret, jwtCfg.AccessLifetime, userObj.ID.String())
+	return s.generateTokenPair(jwtCfg, userObj.ID.String())
 }
 
 func (s *Service) fetchGoogleUserInfo(ctx context.Context, accessToken string) (*GoogleUserInfo, error) {
@@ -125,4 +122,87 @@ func (s *Service) fetchGoogleUserInfo(ctx context.Context, accessToken string) (
 		return nil, err
 	}
 	return &userInfo, nil
+}
+
+func (s *Service) refreshTokens(ctx context.Context, refreshToken string, cfg *config.JWTConfig) (*utils.TokenPair, error) {
+	userID, _, err := utils.DecryptJWT(refreshToken, cfg.Secret, utils.TokenTypeRefresh)
+	if err != nil {
+		return nil, utils.ErrInvalidRefreshToken
+	}
+	if s.isTokenBlacklisted(ctx, refreshToken) {
+		return nil, utils.ErrInvalidRefreshToken
+	}
+
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, utils.ErrInvalidRefreshToken
+	}
+
+	_, err = s.userService.GetUserById(ctx, userUUID)
+	if err != nil {
+		return nil, utils.ErrInvalidRefreshToken
+	}
+
+	err = s.blacklistToken(ctx, cfg, refreshToken, utils.TokenTypeRefresh)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.generateTokenPair(cfg, userID)
+
+}
+
+func (s *Service) generateTokenPair(cfg *config.JWTConfig, userID string) (*utils.TokenPair, error) {
+	accessToken, err := utils.GenerateJWT(cfg.Secret, utils.TokenTypeAccess, cfg.AccessLifetime, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
+	}
+
+	refreshToken, err := utils.GenerateJWT(cfg.Secret, utils.TokenTypeRefresh, cfg.RefreshLifetime, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	return &utils.TokenPair{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
+}
+
+func (s *Service) isTokenBlacklisted(ctx context.Context, token string) bool {
+	if s.redis == nil {
+		return false
+	}
+
+	key := utils.RefreshTokenBlacklistPrefix + token
+	exists, err := s.redis.Exists(ctx, key).Result()
+	return err == nil && exists > 0
+}
+
+func (s *Service) blacklistToken(ctx context.Context, cfg *config.JWTConfig, token string, expectedTokenType string) error {
+	if s.redis == nil {
+		return nil
+	}
+
+	_, tokenClaims, err := utils.DecryptJWT(token, cfg.Secret, expectedTokenType)
+	if err != nil {
+		return err
+	}
+	exp, ok := tokenClaims["exp"].(float64)
+	if !ok {
+		return fmt.Errorf("token missing expiry claim")
+	}
+
+	ttl := time.Until(time.Unix(int64(exp), 0))
+	if ttl <= 0 {
+		return fmt.Errorf("token already expired")
+	}
+
+	key := utils.RefreshTokenBlacklistPrefix + token
+	err = s.redis.Set(ctx, key, "1", ttl).Err()
+	if err != nil {
+		return fmt.Errorf("failed to set blacklist key: %w", err)
+	}
+
+	return nil
 }

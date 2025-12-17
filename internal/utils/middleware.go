@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"errors"
 	"net/http"
 	"slices"
 	"strings"
@@ -11,7 +12,7 @@ import (
 
 func JWTAuthMiddleware(cfgJWT *config.JWTConfig) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		tokenString, err := c.Cookie(cfgJWT.JwtTokenCookieKey)
+		tokenString, err := c.Cookie(cfgJWT.AccessTokenCookieKey)
 		if err != nil {
 			authHeader := c.GetHeader("Authorization")
 			if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
@@ -22,8 +23,22 @@ func JWTAuthMiddleware(cfgJWT *config.JWTConfig) gin.HandlerFunc {
 				return
 			}
 		}
-		userID, err := DecryptJWT(tokenString, cfgJWT.Secret)
+		userID, _, err := DecryptJWT(tokenString, cfgJWT.Secret, TokenTypeAccess)
 		if err != nil {
+			if errors.Is(err, ErrExpiredToken) {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"error": "Token expired",
+				})
+				c.Abort()
+				return
+			}
+
+			if errors.Is(err, ErrInvalidTokenType) {
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token type"})
+				c.Abort()
+				return
+			}
+
 			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 			c.Abort()
 			return
