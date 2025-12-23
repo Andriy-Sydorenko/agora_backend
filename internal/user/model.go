@@ -14,14 +14,13 @@ const (
 )
 
 type User struct {
-	// TODO: consider using `gorm.Model`
 	ID           uuid.UUID    `gorm:"type:uuid;primaryKey"`
-	Username     string       `gorm:"uniqueIndex;not null"`
-	Email        string       `gorm:"uniqueIndex;not null"`
-	Password     *string      `gorm:"type:varchar(255)"`
-	GoogleID     *string      `gorm:"type:varchar(255);uniqueIndex"`
-	AvatarURL    *string      `gorm:"type:varchar(500)"`
-	AuthProvider AuthProvider `gorm:"type:varchar(20);not null;default:'email'"`
+	Username     string       `gorm:"size:255;uniqueIndex;not null"`
+	Email        string       `gorm:"size:255;uniqueIndex;not null"`
+	Password     *string      `gorm:"size:255"`
+	GoogleID     *string      `gorm:"size:255;uniqueIndex"`
+	AvatarURL    *string      `gorm:"size:500"`
+	AuthProvider AuthProvider `gorm:"size:20;not null;default:'email'"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 	DeletedAt    gorm.DeletedAt `gorm:"index"`
