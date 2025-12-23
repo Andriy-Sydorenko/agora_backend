@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -43,7 +44,10 @@ func (repo *Repository) GetByID(ctx context.Context, id uuid.UUID) (*User, error
 // GetByEmail retrieves user by email
 func (repo *Repository) GetByEmail(ctx context.Context, email string) (*User, error) {
 	var currentUser User
-	err := repo.db.WithContext(ctx).Where("email = ?", email).First(&currentUser).Error // INFO: using Where() instead of plain First() for better method chaining and readability
+	err := repo.db.WithContext(ctx).Where(
+		"email = ?",
+		email,
+	).First(&currentUser).Error // INFO: using Where() instead of plain First() for better method chaining and readability
 	if err != nil {
 		return nil, err
 	}
@@ -82,6 +86,9 @@ func (repo *Repository) ExistsByEmail(ctx context.Context, email string) (bool, 
 // ExistsByUsername checks if user with given username exists
 func (repo *Repository) ExistsByUsername(ctx context.Context, username string) (bool, error) {
 	var count int64
-	err := repo.db.WithContext(ctx).Model(&User{}).Where("username = ?", username).Count(&count).Error
+	err := repo.db.WithContext(ctx).Model(&User{}).Where(
+		"username = ?",
+		username,
+	).Count(&count).Error
 	return count > 0, err
 }

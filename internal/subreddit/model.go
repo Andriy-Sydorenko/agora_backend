@@ -1,10 +1,11 @@
 package subreddit
 
 import (
+	"time"
+
 	"github.com/Andriy-Sydorenko/agora_backend/internal/user"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"time"
 )
 
 type Subreddit struct {
