@@ -1,10 +1,11 @@
 package subreddit
 
 import (
+	"time"
+
 	"github.com/Andriy-Sydorenko/agora_backend/internal/user"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"time"
 )
 
 type Subreddit struct {
@@ -16,7 +17,7 @@ type Subreddit struct {
 
 	CreatorID uuid.UUID   `gorm:"type:uuid;not null;index"`
 	Creator   user.User   `gorm:"foreignKey:CreatorID;references:ID"`
-	Members   []user.User `gorm:"many2many:subreddit_members;foreignKey:ID;joinForeignKey:subreddit_id;References:ID;joinReferences:user_id"`
+	Members   []user.User `gorm:"many2many:subreddit_members"`
 
 	// Update on every action(sub/unsub)
 	MemberCount int `gorm:"default:0;not null"`
@@ -28,4 +29,10 @@ type Subreddit struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt `gorm:"index"`
+}
+
+type SubredditMember struct {
+	SubredditID uuid.UUID `gorm:"type:uuid;primaryKey"`
+	UserID      uuid.UUID `gorm:"type:uuid;primaryKey"`
+	CreatedAt   time.Time `gorm:"not null"`
 }
