@@ -2,10 +2,11 @@ package auth
 
 import (
 	"errors"
-	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
-	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
 	"log"
 	"net/http"
+
+	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
+	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -33,10 +34,12 @@ func (h *Handler) Register(c *gin.Context) {
 	if err != nil {
 		var validationErrs ValidationErrors
 		if errors.As(err, &validationErrs) {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "Validation failed",
-				"details": validationErrs,
-			})
+			c.JSON(
+				http.StatusBadRequest, gin.H{
+					"error":   "Validation failed",
+					"details": validationErrs,
+				},
+			)
 			return
 		}
 
@@ -44,9 +47,11 @@ func (h *Handler) Register(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "Registration successful",
-	})
+	c.JSON(
+		http.StatusCreated, gin.H{
+			"message": "Registration successful",
+		},
+	)
 }
 
 func (h *Handler) Login(c *gin.Context) {
@@ -61,10 +66,12 @@ func (h *Handler) Login(c *gin.Context) {
 	if err != nil {
 		var validationErrs ValidationErrors
 		if errors.As(err, &validationErrs) {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error":   "Validation failed",
-				"details": validationErrs,
-			})
+			c.JSON(
+				http.StatusBadRequest, gin.H{
+					"error":   "Validation failed",
+					"details": validationErrs,
+				},
+			)
 			return
 		}
 
@@ -74,9 +81,11 @@ func (h *Handler) Login(c *gin.Context) {
 		}
 
 		if errors.Is(err, ErrOAuthAccountNoPassword) {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "This account uses Google Sign-In. Please login with Google.",
-			})
+			c.JSON(
+				http.StatusBadRequest, gin.H{
+					"error": "This account uses Google Sign-In. Please login with Google.",
+				},
+			)
 			return
 		}
 
@@ -86,9 +95,11 @@ func (h *Handler) Login(c *gin.Context) {
 
 	h.setTokenCookies(c, tokenPair)
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Login successful",
-	})
+	c.JSON(
+		http.StatusOK, gin.H{
+			"message": "Login successful",
+		},
+	)
 }
 
 func (h *Handler) Logout(c *gin.Context) {
@@ -97,16 +108,39 @@ func (h *Handler) Logout(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Refresh token required"})
 		return
 	}
-	err = h.service.blacklistToken(c.Request.Context(), &h.config.JWT, refreshToken, utils.TokenTypeRefresh)
+	err = h.service.blacklistToken(
+		c.Request.Context(),
+		&h.config.JWT,
+		refreshToken,
+		utils.TokenTypeRefresh,
+	)
 	if err != nil {
 		// TODO: Implement logging instead of builtin logic
 		log.Println("Failed to blacklist token")
 	}
-	c.SetCookie(h.config.JWT.AccessTokenCookieKey, "", -1, "/", "", h.config.Project.IsProduction, true)
-	c.SetCookie(h.config.JWT.RefreshTokenCookieKey, "", -1, "/", "", h.config.Project.IsProduction, true)
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Logout successful",
-	})
+	c.SetCookie(
+		h.config.JWT.AccessTokenCookieKey,
+		"",
+		-1,
+		"/",
+		"",
+		h.config.Project.IsProduction,
+		true,
+	)
+	c.SetCookie(
+		h.config.JWT.RefreshTokenCookieKey,
+		"",
+		-1,
+		"/",
+		"",
+		h.config.Project.IsProduction,
+		true,
+	)
+	c.JSON(
+		http.StatusOK, gin.H{
+			"message": "Logout successful",
+		},
+	)
 }
 
 func (h *Handler) RefreshToken(c *gin.Context) {
@@ -136,15 +170,19 @@ func (h *Handler) GoogleURL(c *gin.Context) {
 	googleURL, err := h.service.CreateGoogleURL(h.config)
 
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "Problem generating google auth url",
-		})
+		c.JSON(
+			http.StatusBadRequest, gin.H{
+				"error": "Problem generating google auth url",
+			},
+		)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"url": googleURL,
-	})
+	c.JSON(
+		http.StatusOK, gin.H{
+			"url": googleURL,
+		},
+	)
 }
 
 func (h *Handler) HandleGoogleCallback(c *gin.Context) {
@@ -155,15 +193,22 @@ func (h *Handler) HandleGoogleCallback(c *gin.Context) {
 		return
 	}
 
-	tokenPair, err := h.service.HandleGoogleCallback(c.Request.Context(), &h.config.JWT, googleAuthCode, googleAuthState)
+	tokenPair, err := h.service.HandleGoogleCallback(
+		c.Request.Context(),
+		&h.config.JWT,
+		googleAuthCode,
+		googleAuthState,
+	)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"error": "OAuth authentication failed",
-		})
+		c.JSON(
+			http.StatusUnauthorized, gin.H{
+				"error": "OAuth authentication failed",
+			},
+		)
 	}
 
 	h.setTokenCookies(c, tokenPair)
-	c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000")
+	c.Redirect(http.StatusTemporaryRedirect, h.config.Project.FrontendURL)
 }
 
 func (h *Handler) setTokenCookies(c *gin.Context, tokenPair *utils.TokenPair) {
