@@ -2,9 +2,15 @@ package user
 
 import (
 	"context"
+	"errors"
 	"fmt"
+
 	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
 	"github.com/google/uuid"
+)
+
+var (
+	ErrUserNotFound = errors.New("user not found")
 )
 
 type Service struct {
@@ -33,7 +39,10 @@ func (s *Service) CreateUser(ctx context.Context, email, username, password stri
 	return user, s.repo.Create(ctx, user)
 }
 
-func (s *Service) CreateUserByGoogle(ctx context.Context, email, username, googleID, avatarURL string) (*User, error) {
+func (s *Service) CreateUserByGoogle(
+	ctx context.Context,
+	email, username, googleID, avatarURL string,
+) (*User, error) {
 	user := &User{
 		ID:           uuid.New(),
 		Email:        email,
@@ -70,7 +79,10 @@ func (s *Service) ExistsByUsername(ctx context.Context, username string) (bool, 
 	return s.repo.ExistsByUsername(ctx, username)
 }
 
-func (s *Service) FindOrCreateByGoogle(ctx context.Context, email, googleID, avatarURL string) (*User, error) {
+func (s *Service) FindOrCreateByGoogle(
+	ctx context.Context,
+	email, googleID, avatarURL string,
+) (*User, error) {
 	if user, err := s.repo.GetByGoogleID(ctx, googleID); err == nil {
 		return user, nil
 	}

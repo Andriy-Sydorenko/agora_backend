@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/user"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
@@ -12,8 +15,6 @@ import (
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-	"net/http"
-	"time"
 )
 
 type Service struct {
@@ -23,12 +24,11 @@ type Service struct {
 	redis       *redis.Client
 }
 
-var (
-	ErrInvalidCredentials     = errors.New("invalid email or password")
-	ErrOAuthAccountNoPassword = errors.New("account uses OAuth, no password set")
-)
-
-func NewService(userService *user.Service, googleCfg config.GoogleConfig, redisClient *redis.Client) *Service {
+func NewService(
+	userService *user.Service,
+	googleCfg config.GoogleConfig,
+	redisClient *redis.Client,
+) *Service {
 	oauthConfig := &oauth2.Config{
 		ClientID:     googleCfg.ClientID,
 		ClientSecret: googleCfg.ClientSecret,
@@ -45,8 +45,18 @@ func NewService(userService *user.Service, googleCfg config.GoogleConfig, redisC
 	}
 }
 
+var (
+	ErrInvalidCredentials     = errors.New("invalid email or password")
+	ErrOAuthAccountNoPassword = errors.New("account uses OAuth, no password set")
+)
+
 func (s *Service) Register(ctx context.Context, email, username, password string) error {
-	if errs := s.validator.ValidateRegistrationInput(ctx, email, username, password); len(errs) > 0 {
+	if errs := s.validator.ValidateRegistrationInput(
+		ctx,
+		email,
+		username,
+		password,
+	); len(errs) > 0 {
 		return errs
 	}
 
@@ -54,7 +64,11 @@ func (s *Service) Register(ctx context.Context, email, username, password string
 	return err
 }
 
-func (s *Service) Login(ctx context.Context, cfg config.JWTConfig, email, password string) (*utils.TokenPair, error) {
+func (s *Service) Login(
+	ctx context.Context,
+	cfg config.JWTConfig,
+	email, password string,
+) (*utils.TokenPair, error) {
 	if errs := s.validator.ValidateLoginInput(ctx, email, password); len(errs) > 0 {
 		return nil, errs
 	}
@@ -79,11 +93,19 @@ func (s *Service) CreateGoogleURL(cfg *config.Config) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to generate state token: %w", err)
 	}
-	authURL := s.oauthConfig.AuthCodeURL(state, oauth2.AccessTypeOnline, oauth2.SetAuthURLParam("prompt", "select_account"))
+	authURL := s.oauthConfig.AuthCodeURL(
+		state,
+		oauth2.AccessTypeOnline,
+		oauth2.SetAuthURLParam("prompt", "select_account"),
+	)
 	return authURL, nil
 }
 
-func (s *Service) HandleGoogleCallback(ctx context.Context, jwtCfg *config.JWTConfig, code, state string) (*utils.TokenPair, error) {
+func (s *Service) HandleGoogleCallback(
+	ctx context.Context,
+	jwtCfg *config.JWTConfig,
+	code, state string,
+) (*utils.TokenPair, error) {
 	if err := ValidateState(state, jwtCfg.Secret); err != nil {
 		return nil, fmt.Errorf("invalid state: %w", err)
 	}
@@ -98,7 +120,12 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, jwtCfg *config.JWTCo
 		return nil, fmt.Errorf("failed to fetch user info: %w", err)
 	}
 
-	userObj, err := s.userService.FindOrCreateByGoogle(ctx, userInfo.Email, userInfo.ID, userInfo.AvatarURL)
+	userObj, err := s.userService.FindOrCreateByGoogle(
+		ctx,
+		userInfo.Email,
+		userInfo.ID,
+		userInfo.AvatarURL,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
@@ -106,9 +133,17 @@ func (s *Service) HandleGoogleCallback(ctx context.Context, jwtCfg *config.JWTCo
 	return s.generateTokenPair(jwtCfg, userObj.ID.String())
 }
 
-func (s *Service) fetchGoogleUserInfo(ctx context.Context, accessToken string) (*GoogleUserInfo, error) {
+func (s *Service) fetchGoogleUserInfo(ctx context.Context, accessToken string) (
+	*GoogleUserInfo,
+	error,
+) {
 	// TODO: replace hardcoded values
-	req, _ := http.NewRequestWithContext(ctx, "GET", "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+	req, _ := http.NewRequestWithContext(
+		ctx,
+		"GET",
+		"https://www.googleapis.com/oauth2/v2/userinfo",
+		nil,
+	)
 	req.Header.Set("Authorization", "Bearer "+accessToken)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -124,7 +159,11 @@ func (s *Service) fetchGoogleUserInfo(ctx context.Context, accessToken string) (
 	return &userInfo, nil
 }
 
-func (s *Service) refreshTokens(ctx context.Context, refreshToken string, cfg *config.JWTConfig) (*utils.TokenPair, error) {
+func (s *Service) refreshTokens(
+	ctx context.Context,
+	refreshToken string,
+	cfg *config.JWTConfig,
+) (*utils.TokenPair, error) {
 	userID, _, err := utils.DecryptJWT(refreshToken, cfg.Secret, utils.TokenTypeRefresh)
 	if err != nil {
 		return nil, utils.ErrInvalidRefreshToken
@@ -152,13 +191,26 @@ func (s *Service) refreshTokens(ctx context.Context, refreshToken string, cfg *c
 
 }
 
-func (s *Service) generateTokenPair(cfg *config.JWTConfig, userID string) (*utils.TokenPair, error) {
-	accessToken, err := utils.GenerateJWT(cfg.Secret, utils.TokenTypeAccess, cfg.AccessLifetime, userID)
+func (s *Service) generateTokenPair(cfg *config.JWTConfig, userID string) (
+	*utils.TokenPair,
+	error,
+) {
+	accessToken, err := utils.GenerateJWT(
+		cfg.Secret,
+		utils.TokenTypeAccess,
+		cfg.AccessLifetime,
+		userID,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
 
-	refreshToken, err := utils.GenerateJWT(cfg.Secret, utils.TokenTypeRefresh, cfg.RefreshLifetime, userID)
+	refreshToken, err := utils.GenerateJWT(
+		cfg.Secret,
+		utils.TokenTypeRefresh,
+		cfg.RefreshLifetime,
+		userID,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
@@ -179,7 +231,12 @@ func (s *Service) isTokenBlacklisted(ctx context.Context, token string) bool {
 	return err == nil && exists > 0
 }
 
-func (s *Service) blacklistToken(ctx context.Context, cfg *config.JWTConfig, token string, expectedTokenType string) error {
+func (s *Service) blacklistToken(
+	ctx context.Context,
+	cfg *config.JWTConfig,
+	token string,
+	expectedTokenType string,
+) error {
 	if s.redis == nil {
 		return nil
 	}

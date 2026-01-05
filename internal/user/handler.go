@@ -2,12 +2,13 @@ package user
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"net/http"
 )
 
 type Handler struct {
@@ -26,9 +27,11 @@ func (h *Handler) GetRequestUser(c *gin.Context) {
 	userIDString := c.GetString("user_id")
 	userID, err := uuid.Parse(userIDString)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": utils.ErrInvalidAccessToken.Error(),
-		})
+		c.JSON(
+			http.StatusBadRequest, gin.H{
+				"error": utils.ErrInvalidAccessToken.Error(),
+			},
+		)
 		return
 	}
 
@@ -38,12 +41,14 @@ func (h *Handler) GetRequestUser(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": ErrUserNotFound.Error()})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch user"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch user"})
 		return
 	}
 
-	c.JSON(http.StatusOK, PublicUserResponse{
-		Email:    user.Email,
-		Username: user.Username,
-	})
+	c.JSON(
+		http.StatusOK, PublicUserResponse{
+			Email:    user.Email,
+			Username: user.Username,
+		},
+	)
 }
