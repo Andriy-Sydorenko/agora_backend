@@ -41,22 +41,32 @@ type JWTConfig struct {
 }
 
 type GoogleConfig struct {
+	ClientID          string
+	ClientSecret      string
+	ClientRedirectURL string
+}
+
+type SMTPConfig struct {
 	SMTPHost     string
 	SMTPPort     int
 	SMTPUsername string
 	SMTPPassword string
 	SMTPUseTLS   bool
-
-	ClientID          string
-	ClientSecret      string
-	ClientRedirectURL string
 }
 
 type CorsConfig struct {
 	AllowedOrigins []string
 }
 
-func loadEnv() (CorsConfig, DatabaseConfig, RedisConfig, JWTConfig, ProjectConfig, GoogleConfig) {
+func loadEnv() (
+	CorsConfig,
+	DatabaseConfig,
+	RedisConfig,
+	JWTConfig,
+	ProjectConfig,
+	GoogleConfig,
+	SMTPConfig,
+) {
 	if _, ok := os.LookupEnv("IS_DOCKER"); !ok {
 		if err := godotenv.Load(); err != nil {
 			log.Fatalln("⚠️ No .env file found, falling back to OS envs. Details:", err.Error())
@@ -100,17 +110,19 @@ func loadEnv() (CorsConfig, DatabaseConfig, RedisConfig, JWTConfig, ProjectConfi
 		FrontendURL:  getEnv("FRONTEND_URL", "http://localhost:3000", parseString),
 	}
 	googleCfg := GoogleConfig{
-		SMTPHost:          getEnv("GOOGLE_SMTP_HOST", "smtp.gmail.com", parseString),
-		SMTPPort:          getEnv("GOOGLE_SMTP_PORT", 587, parseInt),
-		SMTPUsername:      getEnv("GOOGLE_SMTP_USERNAME", "email@gmail.com", parseString),
-		SMTPPassword:      getEnv("GOOGLE_SMTP_PASSWORD", "somepassword", parseString),
-		SMTPUseTLS:        getEnv("GOOGLE_SMTP_USE_TLS", true, parseBool),
 		ClientID:          getEnv("GOOGLE_CLIENT_ID", "google_client_id", parseString),
 		ClientSecret:      getEnv("GOOGLE_CLIENT_SECRET", "supadupasecret", parseString),
 		ClientRedirectURL: getEnv("GOOGLE_REDIRECT_URL", "someurl.com", parseString),
 	}
+	smtpCfg := SMTPConfig{
+		SMTPHost:     getEnv("GOOGLE_SMTP_HOST", "smtp.gmail.com", parseString),
+		SMTPPort:     getEnv("GOOGLE_SMTP_PORT", 587, parseInt),
+		SMTPUsername: getEnv("GOOGLE_SMTP_USERNAME", "email@gmail.com", parseString),
+		SMTPPassword: getEnv("GOOGLE_SMTP_PASSWORD", "somepassword", parseString),
+		SMTPUseTLS:   getEnv("GOOGLE_SMTP_USE_TLS", true, parseBool),
+	}
 
-	return corsCfg, dbCfg, redisCfg, jwtCfg, projectCfg, googleCfg
+	return corsCfg, dbCfg, redisCfg, jwtCfg, projectCfg, googleCfg, smtpCfg
 }
 
 type parseFunc[T any] func(string) (T, error)

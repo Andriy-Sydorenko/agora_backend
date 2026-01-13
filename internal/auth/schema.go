@@ -19,3 +19,12 @@ type GoogleUserInfo struct {
 	VerifiedEmail bool   `json:"verified_email"`
 	AvatarURL     string `json:"picture"`
 }
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email"`
+}
+
+type ResetPasswordRequest struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"new_password"`
+}

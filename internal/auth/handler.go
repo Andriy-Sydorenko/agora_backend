@@ -7,7 +7,6 @@ import (
 
 	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
-
 	"github.com/gin-gonic/gin"
 )
 
@@ -24,6 +23,8 @@ func NewHandler(service *Service, cfg *config.Config) *Handler {
 }
 
 func (h *Handler) Register(c *gin.Context) {
+	// TODO: Add email verification step
+
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
@@ -209,6 +210,74 @@ func (h *Handler) HandleGoogleCallback(c *gin.Context) {
 
 	h.setTokenCookies(c, tokenPair)
 	c.Redirect(http.StatusTemporaryRedirect, h.config.Project.FrontendURL)
+}
+
+func (h *Handler) ForgotPassword(c *gin.Context) {
+	var req ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	err := h.service.RequestPasswordReset(c.Request.Context(), req.Email)
+
+	if err != nil {
+		var validationErrs ValidationErrors
+		if errors.As(err, &validationErrs) {
+			c.JSON(
+				http.StatusBadRequest, gin.H{
+					"error":   "Validation failed",
+					"details": validationErrs,
+				},
+			)
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Password reset request failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password reset link has been sent to your email!"})
+}
+
+func (h *Handler) ResetPassword(c *gin.Context) {
+	var req ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	err := h.service.ResetPassword(c.Request.Context(), req.Token, req.NewPassword)
+	if err != nil {
+		var validationErrs ValidationErrors
+		if errors.As(err, &validationErrs) {
+			c.JSON(
+				http.StatusBadRequest, gin.H{
+					"error":   "Validation failed",
+					"details": validationErrs,
+				},
+			)
+			return
+		}
+
+		if errors.Is(err, ErrInvalidResetToken) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or expired reset token"})
+			return
+		}
+		if errors.Is(err, ErrOAuthAccountNoPassword) {
+			c.JSON(
+				http.StatusBadRequest, gin.H{
+					"error": "This account uses Google Sign-In. Password reset is not available.",
+				},
+			)
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to reset password"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Password was successfully reset!"})
 }
 
 func (h *Handler) setTokenCookies(c *gin.Context, tokenPair *utils.TokenPair) {

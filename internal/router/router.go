@@ -4,6 +4,7 @@ import (
 	"github.com/Andriy-Sydorenko/agora_backend/internal/auth"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/database"
+	"github.com/Andriy-Sydorenko/agora_backend/internal/email"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/subreddit"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/user"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
@@ -21,8 +22,15 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	subredditRepo := subreddit.NewRepository(db)
 
 	// Domain layer - Services
+	emailService := email.NewService(cfg.SMTP)
 	userService := user.NewService(userRepo)
-	authService := auth.NewService(userService, cfg.Google, redisClient)
+	authService := auth.NewService(
+		userService,
+		emailService,
+		&cfg.Google,
+		&cfg.Project,
+		redisClient,
+	)
 	subredditService := subreddit.NewService(subredditRepo)
 
 	// Presentation layer - Handlers
