@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Andriy-Sydorenko/agora_backend/internal/user"
 	"regexp"
 	"strings"
+
+	"github.com/Andriy-Sydorenko/agora_backend/internal/user"
 )
 
 var (
@@ -151,7 +152,10 @@ func (v *Validator) ValidateUsernameExists(ctx context.Context, username string)
 	return nil
 }
 
-func (v *Validator) ValidateRegistrationInput(ctx context.Context, email, username, password string) ValidationErrors {
+func (v *Validator) ValidateRegistrationInput(
+	ctx context.Context,
+	email, username, password string,
+) ValidationErrors {
 	var errs ValidationErrors
 	// Format validation
 	if err := v.ValidateEmailFormat(email); err != nil {
@@ -177,7 +181,10 @@ func (v *Validator) ValidateRegistrationInput(ctx context.Context, email, userna
 	return errs
 }
 
-func (v *Validator) ValidateLoginInput(ctx context.Context, email, password string) ValidationErrors {
+func (v *Validator) ValidateLoginInput(
+	ctx context.Context,
+	email, password string,
+) ValidationErrors {
 	var errs ValidationErrors
 	if err := v.ValidateEmailFormat(email); err != nil {
 		errs = append(errs, NewValidationError("email", err.Error()))
@@ -191,5 +198,23 @@ func (v *Validator) ValidateLoginInput(ctx context.Context, email, password stri
 			errs = append(errs, NewValidationError("email", err.Error()))
 		}
 	}
+	return errs
+}
+
+func (v *Validator) ValidatePasswordResetRequestInput(email string) ValidationErrors {
+	var errs ValidationErrors
+	if err := v.ValidateEmailFormat(email); err != nil {
+		errs = append(errs, NewValidationError("email", err.Error()))
+	}
+
+	return errs
+}
+
+func (v *Validator) ValidatePasswordResetInput(password string) ValidationErrors {
+	var errs ValidationErrors
+	if err := v.ValidatePasswordFormat(password); err != nil {
+		errs = append(errs, NewValidationError("password", err.Error()))
+	}
+
 	return errs
 }

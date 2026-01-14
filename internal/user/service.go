@@ -97,3 +97,19 @@ func (s *Service) FindOrCreateByGoogle(
 
 	return s.CreateUserByGoogle(ctx, email, username, googleID, avatarURL)
 }
+
+func (s *Service) UpdatePassword(ctx context.Context, userID uuid.UUID, newPassword string) error {
+	hashedPassword, err := utils.HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("password hashing failed: %w", err)
+	}
+
+	user, err := s.repo.GetByID(ctx, userID)
+	if err != nil {
+		return ErrUserNotFound
+	}
+
+	user.Password = &hashedPassword
+
+	return s.repo.Update(ctx, user)
+}

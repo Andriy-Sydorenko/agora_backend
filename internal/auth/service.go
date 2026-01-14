@@ -2,13 +2,17 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/Andriy-Sydorenko/agora_backend/internal/config"
+	"github.com/Andriy-Sydorenko/agora_backend/internal/email"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/user"
 	"github.com/Andriy-Sydorenko/agora_backend/internal/utils"
 	"github.com/google/uuid"
@@ -18,36 +22,48 @@ import (
 )
 
 type Service struct {
-	userService *user.Service
-	validator   *Validator
-	oauthConfig *oauth2.Config
-	redis       *redis.Client
+	userService   *user.Service
+	emailService  *email.Service
+	validator     *Validator
+	oauthConfig   *oauth2.Config
+	projectConfig *config.ProjectConfig
+	redis         *redis.Client
 }
 
 func NewService(
 	userService *user.Service,
-	googleCfg config.GoogleConfig,
+	emailService *email.Service,
+	googleConfig *config.GoogleConfig,
+	projectConfig *config.ProjectConfig,
 	redisClient *redis.Client,
 ) *Service {
 	oauthConfig := &oauth2.Config{
-		ClientID:     googleCfg.ClientID,
-		ClientSecret: googleCfg.ClientSecret,
-		RedirectURL:  googleCfg.ClientRedirectURL,
+		ClientID:     googleConfig.ClientID,
+		ClientSecret: googleConfig.ClientSecret,
+		RedirectURL:  googleConfig.ClientRedirectURL,
 		Scopes:       []string{"openid", "email", "profile"},
 		Endpoint:     google.Endpoint,
 	}
 
 	return &Service{
-		userService: userService,
-		validator:   NewValidator(userService),
-		oauthConfig: oauthConfig,
-		redis:       redisClient,
+		userService:   userService,
+		emailService:  emailService,
+		validator:     NewValidator(userService),
+		oauthConfig:   oauthConfig,
+		projectConfig: projectConfig,
+		redis:         redisClient,
 	}
 }
 
 var (
 	ErrInvalidCredentials     = errors.New("invalid email or password")
 	ErrOAuthAccountNoPassword = errors.New("account uses OAuth, no password set")
+	ErrInvalidResetToken      = errors.New("invalid or expired reset token")
+)
+
+const (
+	PasswordResetTokenPrefix   = "password_reset:"
+	PasswordResetTokenLifetime = 30 * time.Minute
 )
 
 func (s *Service) Register(ctx context.Context, email, username, password string) error {
@@ -133,6 +149,58 @@ func (s *Service) HandleGoogleCallback(
 	return s.generateTokenPair(jwtCfg, userObj.ID.String())
 }
 
+func (s *Service) RequestPasswordReset(ctx context.Context, email string) error {
+	resetToken := s.generateResetToken()
+	key := PasswordResetTokenPrefix + resetToken
+	err := s.redis.Set(ctx, key, email, PasswordResetTokenLifetime).Err()
+	if err != nil {
+		return fmt.Errorf("failed to send password reset email: %w", err)
+	}
+	resetUrl := s.projectConfig.FrontendURL + "/forgot-password/" + resetToken
+	err = s.emailService.SendForgotPasswordEmail(resetUrl, email)
+	if err != nil {
+		return fmt.Errorf("failed to send password reset email: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) ResetPassword(ctx context.Context, resetToken, password string) error {
+	if errs := s.validator.ValidatePasswordResetInput(password); len(errs) > 0 {
+		return errs
+	}
+	key := PasswordResetTokenPrefix + resetToken
+	userEmail, err := s.redis.Get(ctx, key).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return ErrInvalidResetToken
+		}
+		return fmt.Errorf("failed to retrieve reset token: %w", err)
+	}
+
+	userObj, err := s.userService.GetByEmail(ctx, userEmail)
+	if err != nil {
+		return ErrInvalidResetToken
+	}
+
+	if userObj.Password == nil {
+		return ErrOAuthAccountNoPassword
+	}
+
+	err = s.userService.UpdatePassword(ctx, userObj.ID, password)
+	if err != nil {
+		return fmt.Errorf("failed to update password: %w", err)
+	}
+
+	err = s.redis.Del(ctx, key).Err()
+	if err != nil {
+		// TODO: Implement proper logging
+		log.Printf("error deleting redis key: %s", err)
+	}
+
+	return nil
+}
+
 func (s *Service) fetchGoogleUserInfo(ctx context.Context, accessToken string) (
 	*GoogleUserInfo,
 	error,
@@ -188,7 +256,6 @@ func (s *Service) refreshTokens(
 	}
 
 	return s.generateTokenPair(cfg, userID)
-
 }
 
 func (s *Service) generateTokenPair(cfg *config.JWTConfig, userID string) (
@@ -262,4 +329,10 @@ func (s *Service) blacklistToken(
 	}
 
 	return nil
+}
+
+func (s *Service) generateResetToken() string {
+	bytes := make([]byte, 32)
+	rand.Read(bytes)
+	return base64.URLEncoding.EncodeToString(bytes)
 }

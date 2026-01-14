@@ -12,6 +12,9 @@ func RegisterRoutes(router *gin.Engine, h *Handler) {
 		authRouter.POST("/login", h.Login)
 		authRouter.POST("/logout", utils.JWTAuthMiddleware(&h.config.JWT), h.Logout)
 		authRouter.POST("/refresh", h.RefreshToken)
+
+		authRouter.POST("/forgot-password", h.ForgotPassword)
+		authRouter.POST("/reset-password", h.ResetPassword)
 	}
 
 	registerGoogleAuthRoutes(authRouter, h)

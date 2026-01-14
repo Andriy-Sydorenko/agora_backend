@@ -1,10 +1,11 @@
 package config
 
 import (
-	"gopkg.in/yaml.v3"
 	"log"
 	"os"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
@@ -16,6 +17,7 @@ type Config struct {
 	JWT      JWTConfig
 	Project  ProjectConfig
 	Google   GoogleConfig
+	SMTP     SMTPConfig
 }
 type AppConfig struct {
 	Name    string `yaml:"name"`
@@ -37,7 +39,7 @@ type LoggingConfig struct {
 func Load(path string) *Config {
 	cfg := new(Config)
 
-	corsCfg, dbCfg, redisCfg, jwtCfg, projectCfg, googleCfg := loadEnv()
+	corsCfg, dbCfg, redisCfg, jwtCfg, projectCfg, googleCfg, smtpCfg := loadEnv()
 
 	yamlFile, err := os.ReadFile(path)
 	if err != nil {
@@ -56,6 +58,7 @@ func Load(path string) *Config {
 	cfg.JWT = jwtCfg
 	cfg.Project = projectCfg
 	cfg.Google = googleCfg
+	cfg.SMTP = smtpCfg
 
 	return cfg
 }
